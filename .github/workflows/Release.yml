@@ -1,0 +1,46 @@
+name: Release POP binaries
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      # 🔹 Minimal binary
+      - name: Build minimal
+        run: |
+          cargo build --release --no-default-features
+          cp target/release/pop target/release/pop-minimal
+
+      # 🔹 Full binary (with server)
+      - name: Build full
+        run: |
+          cargo build --release --features server
+          cp target/release/pop target/release/pop-full
+
+      # 🔼 Upload minimal
+      - name: Upload minimal
+        uses: appleboy/rust-release-binary@main
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          release_tag: ${{ github.ref_name }}
+          binary_path: target/release/pop-minimal
+
+      # 🔼 Upload full
+      - name: Upload full
+        uses: appleboy/rust-release-binary@main
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          release_tag: ${{ github.ref_name }}
+          binary_path: target/release/pop-full
