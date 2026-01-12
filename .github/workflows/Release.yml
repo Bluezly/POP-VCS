@@ -1,4 +1,4 @@
-name: Release POP binaries
+name: Release POP binaries (all OS)
 
 on:
   release:
@@ -6,41 +6,65 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            ext: ""
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            ext: ".exe"
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            ext: ""
+
+    runs-on: ${{ matrix.os }}
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout source
+        uses: actions/checkout@v4
 
-      - name: Install Rust
-        uses: actions-rs/toolchain@v1
+      # =========================
+      # Build MINIMAL
+      # =========================
+      - name: Build pop-minimal
+        uses: rust-build/rust-build.action@v1.4.5
         with:
-          toolchain: stable
-          override: true
+          TOOLCHAIN_VERSION: stable
+          RUSTTARGET: ${{ matrix.target }}
+          EXTRA_ARGS: --no-default-features
 
-      # 🔹 Minimal binary
-      - name: Build minimal
+      - name: Rename minimal binary
+        shell: bash
         run: |
-          cargo build --release --no-default-features
-          cp target/release/pop target/release/pop-minimal
+          mv target/${{ matrix.target }}/release/pop${{ matrix.ext }} pop-minimal-${{ matrix.target }}${{ matrix.ext }}
+          chmod +x pop-minimal-${{ matrix.target }}${{ matrix.ext }} || true
 
-      # 🔹 Full binary (with server)
-      - name: Build full
+      # =========================
+      # Build FULL (server)
+      # =========================
+      - name: Build pop-full
+        uses: rust-build/rust-build.action@v1.4.5
+        with:
+          TOOLCHAIN_VERSION: stable
+          RUSTTARGET: ${{ matrix.target }}
+          EXTRA_ARGS: --features server
+
+      - name: Rename full binary
+        shell: bash
         run: |
-          cargo build --release --features server
-          cp target/release/pop target/release/pop-full
+          mv target/${{ matrix.target }}/release/pop${{ matrix.ext }} pop-full-${{ matrix.target }}${{ matrix.ext }}
+          chmod +x pop-full-${{ matrix.target }}${{ matrix.ext }} || true
 
-      # 🔼 Upload minimal
-      - name: Upload minimal
-        uses: appleboy/rust-release-binary@main
+      # =========================
+      # Upload to GitHub Release
+      # =========================
+      - name: Upload binaries
+        uses: softprops/action-gh-release@v2
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          release_tag: ${{ github.ref_name }}
-          binary_path: target/release/pop-minimal
-
-      # 🔼 Upload full
-      - name: Upload full
-        uses: appleboy/rust-release-binary@main
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          release_tag: ${{ github.ref_name }}
-          binary_path: target/release/pop-full
+          files: |
+            pop-minimal-${{ matrix.target }}${{ matrix.ext }}
+            pop-full-${{ matrix.target }}${{ matrix.ext }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
