@@ -5,66 +5,83 @@ on:
     types: [created]
 
 jobs:
-  build:
+  linux:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # -------- Minimal --------
+      - name: Build Linux minimal
+        uses: rust-build/rust-build.action@v1.4.5
+        with:
+          TOOLCHAIN_VERSION: stable
+          RUSTTARGET: x86_64-unknown-linux-gnu
+          EXTRA_COMMAND_FLAGS: --no-default-features
+
+      - run: |
+          mv target/x86_64-unknown-linux-gnu/release/pop pop-minimal-linux
+          chmod +x pop-minimal-linux
+
+      # -------- Full --------
+      - name: Build Linux full
+        uses: rust-build/rust-build.action@v1.4.5
+        with:
+          TOOLCHAIN_VERSION: stable
+          RUSTTARGET: x86_64-unknown-linux-gnu
+          FEATURES: server
+
+      - run: |
+          mv target/x86_64-unknown-linux-gnu/release/pop pop-full-linux
+          chmod +x pop-full-linux
+
+      - name: Upload Linux binaries
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            pop-minimal-linux
+            pop-full-linux
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  other:
     strategy:
       matrix:
         include:
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            ext: ""
           - os: windows-latest
-            target: x86_64-pc-windows-msvc
-            ext: ".exe"
+            ext: .exe
+            name: windows
           - os: macos-latest
-            target: x86_64-apple-darwin
             ext: ""
+            name: macos
 
     runs-on: ${{ matrix.os }}
 
     steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      # =========================
-      # Build MINIMAL
-      # =========================
-      - name: Build pop-minimal
-        uses: rust-build/rust-build.action@v1.4.5
+      - uses: actions-rs/toolchain@v1
         with:
-          TOOLCHAIN_VERSION: stable
-          RUSTTARGET: ${{ matrix.target }}
-          EXTRA_ARGS: --no-default-features
+          toolchain: stable
+          override: true
 
-      - name: Rename minimal binary
-        shell: bash
-        run: |
-          mv target/${{ matrix.target }}/release/pop${{ matrix.ext }} pop-minimal-${{ matrix.target }}${{ matrix.ext }}
-          chmod +x pop-minimal-${{ matrix.target }}${{ matrix.ext }} || true
+      # -------- Minimal --------
+      - run: cargo build --release --no-default-features
 
-      # =========================
-      # Build FULL (server)
-      # =========================
-      - name: Build pop-full
-        uses: rust-build/rust-build.action@v1.4.5
-        with:
-          TOOLCHAIN_VERSION: stable
-          RUSTTARGET: ${{ matrix.target }}
-          EXTRA_ARGS: --features server
+      - run: |
+          mv target/release/pop${{ matrix.ext }} pop-minimal-${{ matrix.name }}${{ matrix.ext }}
 
-      - name: Rename full binary
-        shell: bash
-        run: |
-          mv target/${{ matrix.target }}/release/pop${{ matrix.ext }} pop-full-${{ matrix.target }}${{ matrix.ext }}
-          chmod +x pop-full-${{ matrix.target }}${{ matrix.ext }} || true
+      # -------- Full --------
+      - run: cargo build --release --features server
 
-      # =========================
-      # Upload to GitHub Release
-      # =========================
+      - run: |
+          mv target/release/pop${{ matrix.ext }} pop-full-${{ matrix.name }}${{ matrix.ext }}
+
       - name: Upload binaries
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            pop-minimal-${{ matrix.target }}${{ matrix.ext }}
-            pop-full-${{ matrix.target }}${{ matrix.ext }}
+            pop-minimal-${{ matrix.name }}${{ matrix.ext }}
+            pop-full-${{ matrix.name }}${{ matrix.ext }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
