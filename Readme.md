@@ -6,7 +6,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/Bluezly/POP-VCS/tree/main/docs">📘 Documentation</a> |
+  <a href="https://github.com/Bluezly/POP-VCS/blob/main/docs/index.md">📘 Documentation</a> |
   <a href="#installation">⚙️ Installation</a> |
   <a href="#philosophy">🧠 Philosophy</a>
 </p>
@@ -163,7 +163,7 @@ Server features:
 
 Full documentation is available here:
 
-👉 https://github.com/Bluezly/POP-VCS/tree/main/docs
+👉 https://github.com/Bluezly/POP-VCS/blob/main/docs/index.md
 
 ---
 
